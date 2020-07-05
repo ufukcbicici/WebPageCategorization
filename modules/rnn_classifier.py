@@ -2,6 +2,8 @@ import tensorflow as tf
 import os
 import pathlib
 import numpy as np
+import pickle
+from sklearn.metrics import classification_report
 
 from collections import Counter
 # from auxillary.db_logger import DbLogger
@@ -173,6 +175,8 @@ class RnnClassifier(DeepClassifier):
         target_category = kwargs["target_category"]
         batch_size = kwargs["batch_size"]
         data_type = kwargs["data_type"]
+        file_path = pathlib.Path(__file__).parent.absolute()
+        model_folder = os.path.join(file_path, "..", "models")
         posteriors = []
         ground_truths = []
         for sequences_arr, seq_lengths, labels_arr in \
@@ -187,3 +191,14 @@ class RnnClassifier(DeepClassifier):
             results = self.sess.run(run_ops, feed_dict=feed_dict)
             posteriors.append(results[0])
             print("\rProcessing document:{0}".format(len(posteriors)), end="")
+            if len(posteriors) % 1000 == 0:
+                y = np.concatenate(ground_truths)
+                y_hat = np.argmax(np.concatenate(posteriors, axis=0), axis=1)
+                report = classification_report(y_true=y, y_pred=y_hat, target_names=["Other", target_category])
+                print(report)
+                model_file = open(os.path.join(model_folder, "{0}_ground_truths.sav".format(data_type)), "wb")
+                pickle.dump(ground_truths, model_file)
+                model_file.close()
+                model_file = open(os.path.join(model_folder, "{0}_posteriors.sav".format(data_type)), "wb")
+                pickle.dump(posteriors, model_file)
+                model_file.close()

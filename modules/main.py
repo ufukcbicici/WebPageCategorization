@@ -18,7 +18,7 @@ def train_model(target_category, load_from_hd):
     print("X")
 
 
-def test_model(run_id, target_category, iteration):
+def run_model(run_id, target_category, iteration):
     file_path = pathlib.Path(__file__).parent.absolute()
     DbLogger.log_db_path = os.path.join(file_path, "..", "db.db")
     corpus = Corpus()
@@ -33,7 +33,7 @@ def test_model(run_id, target_category, iteration):
 
 if __name__ == "__main__":
     # train_model(target_category="adult", load_from_hd=True)
-    test_model(run_id=4, target_category="adult", iteration=30000)
+    run_model(run_id=4, target_category="adult", iteration=30000)
     # import time
     #
     # print('Start.')
