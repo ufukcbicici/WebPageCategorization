@@ -110,7 +110,8 @@ class RnnClassifier(DeepClassifier):
             self.alpha = tf.nn.softmax(masked_pre_softmax)
             r = tf.matmul(tf.transpose(H, [0, 2, 1]),
                           tf.reshape(self.alpha, [-1, self.max_sequence_length, 1]))
-            r = tf.squeeze(r)
+            # r = tf.squeeze(r)
+            r = r[:, :, 0]
             h_star = tf.tanh(r)
             h_drop = tf.nn.dropout(h_star, self.keep_prob)
             self.finalState = h_drop
@@ -177,12 +178,14 @@ class RnnClassifier(DeepClassifier):
         data_type = kwargs["data_type"]
         file_path = pathlib.Path(__file__).parent.absolute()
         model_folder = os.path.join(file_path, "..", "models")
-        posteriors = []
-        ground_truths = []
+        all_posteriors = []
+        all_ground_truths = []
         doc_id = 0
         for sequences_arr, seq_lengths, labels_arr in \
                 self.corpus.get_document_sequences(target_category=target_category, data_type=data_type):
             batch_id = 0
+            doc_ground_truths = []
+            doc_posteriors = []
             while batch_id < sequences_arr.shape[0]:
                 seq_batch = sequences_arr[batch_id:batch_id + batch_size]
                 feed_dict = {self.batch_size: seq_batch.shape[0],
@@ -192,18 +195,26 @@ class RnnClassifier(DeepClassifier):
                              self.max_sequence_length: GlobalConstants.MAX_SEQUENCE_LENGTH}
                 run_ops = [self.posteriors]
                 results = self.sess.run(run_ops, feed_dict=feed_dict)
-                ground_truths.append(labels_arr[batch_id:batch_id + batch_size])
-                posteriors.append(results[0])
+                doc_ground_truths.append(labels_arr[batch_id:batch_id + batch_size])
+                doc_posteriors.append(results[0])
                 batch_id += batch_size
-                print("\rProcessing document:{0}".format(doc_id), end="")
-                if len(posteriors) % 1000 == 0:
-                    y = np.concatenate(ground_truths)
-                    y_hat = np.argmax(np.concatenate(posteriors, axis=0), axis=1)
-                    report = classification_report(y_true=y, y_pred=y_hat, target_names=["Other", target_category])
-                    print(report)
-                    model_file = open(os.path.join(model_folder, "{0}_ground_truths.sav".format(data_type)), "wb")
-                    pickle.dump(ground_truths, model_file)
-                    model_file.close()
-                    model_file = open(os.path.join(model_folder, "{0}_posteriors.sav".format(data_type)), "wb")
-                    pickle.dump(posteriors, model_file)
-                    model_file.close()
+            assert len(doc_posteriors) == len(doc_ground_truths)
+            if len(doc_posteriors) == 0:
+                continue
+            all_posteriors.append(np.concatenate(doc_posteriors, axis=0))
+            all_ground_truths.append(np.concatenate(doc_ground_truths, axis=0))
+            print("\rProcessing document:{0}".format(doc_id), end="")
+            doc_id += 1
+            if doc_id % 1000 == 0:
+                assert len(all_posteriors) == len(all_ground_truths)
+                y = np.concatenate(all_ground_truths)
+                y_hat = np.argmax(np.concatenate(all_posteriors, axis=0), axis=1)
+                report = classification_report(y_true=y, y_pred=y_hat, target_names=["Other", target_category])
+                print(report)
+                model_file = open(os.path.join(model_folder, "{0}_ground_truths.sav".format(data_type)), "wb")
+                pickle.dump(all_ground_truths, model_file)
+                model_file.close()
+                model_file = open(os.path.join(model_folder, "{0}_posteriors.sav".format(data_type)), "wb")
+                pickle.dump(all_posteriors, model_file)
+                model_file.close()
+
