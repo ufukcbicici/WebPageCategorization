@@ -194,6 +194,7 @@ class RnnClassifier(DeepClassifier):
                 results = self.sess.run(run_ops, feed_dict=feed_dict)
                 ground_truths.append(labels_arr[batch_id:batch_id + batch_size])
                 posteriors.append(results[0])
+                batch_id += batch_size
                 print("\rProcessing document:{0}".format(doc_id), end="")
                 if len(posteriors) % 1000 == 0:
                     y = np.concatenate(ground_truths)
