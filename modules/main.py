@@ -27,7 +27,7 @@ def run_model(run_id, target_category, iteration):
     classifier = RnnClassifier(corpus=corpus)
     classifier.build_classifier()
     classifier.load_trained_classifier(run_id=run_id, target_category=target_category, iteration=iteration)
-    classifier.test(batch_size=1000, target_category="adult", data_type="train")
+    classifier.test(batch_size=1000, target_category="adult", data_type="test")
     print("X")
 
 

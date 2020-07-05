@@ -179,26 +179,30 @@ class RnnClassifier(DeepClassifier):
         model_folder = os.path.join(file_path, "..", "models")
         posteriors = []
         ground_truths = []
+        doc_id = 0
         for sequences_arr, seq_lengths, labels_arr in \
                 self.corpus.get_document_sequences(target_category=target_category, data_type=data_type):
-            ground_truths.append(labels_arr)
-            feed_dict = {self.batch_size: sequences_arr.shape[0],
-                         self.input_x: sequences_arr,
-                         self.keep_prob: GlobalConstants.DROPOUT_KEEP_PROB,
-                         self.sequence_length: seq_lengths,
-                         self.max_sequence_length: GlobalConstants.MAX_SEQUENCE_LENGTH}
-            run_ops = [self.posteriors]
-            results = self.sess.run(run_ops, feed_dict=feed_dict)
-            posteriors.append(results[0])
-            print("\rProcessing document:{0}".format(len(posteriors)), end="")
-            if len(posteriors) % 1000 == 0:
-                y = np.concatenate(ground_truths)
-                y_hat = np.argmax(np.concatenate(posteriors, axis=0), axis=1)
-                report = classification_report(y_true=y, y_pred=y_hat, target_names=["Other", target_category])
-                print(report)
-                model_file = open(os.path.join(model_folder, "{0}_ground_truths.sav".format(data_type)), "wb")
-                pickle.dump(ground_truths, model_file)
-                model_file.close()
-                model_file = open(os.path.join(model_folder, "{0}_posteriors.sav".format(data_type)), "wb")
-                pickle.dump(posteriors, model_file)
-                model_file.close()
+            batch_id = 0
+            while batch_id < sequences_arr.shape[0]:
+                seq_batch = sequences_arr[batch_id:batch_id + batch_size]
+                feed_dict = {self.batch_size: seq_batch.shape[0],
+                             self.input_x: seq_batch,
+                             self.keep_prob: GlobalConstants.DROPOUT_KEEP_PROB,
+                             self.sequence_length: seq_lengths[batch_id:batch_id + batch_size],
+                             self.max_sequence_length: GlobalConstants.MAX_SEQUENCE_LENGTH}
+                run_ops = [self.posteriors]
+                results = self.sess.run(run_ops, feed_dict=feed_dict)
+                ground_truths.append(labels_arr[batch_id:batch_id + batch_size])
+                posteriors.append(results[0])
+                print("\rProcessing document:{0}".format(doc_id), end="")
+                if len(posteriors) % 1000 == 0:
+                    y = np.concatenate(ground_truths)
+                    y_hat = np.argmax(np.concatenate(posteriors, axis=0), axis=1)
+                    report = classification_report(y_true=y, y_pred=y_hat, target_names=["Other", target_category])
+                    print(report)
+                    model_file = open(os.path.join(model_folder, "{0}_ground_truths.sav".format(data_type)), "wb")
+                    pickle.dump(ground_truths, model_file)
+                    model_file.close()
+                    model_file = open(os.path.join(model_folder, "{0}_posteriors.sav".format(data_type)), "wb")
+                    pickle.dump(posteriors, model_file)
+                    model_file.close()
