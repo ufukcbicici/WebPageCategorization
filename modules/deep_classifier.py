@@ -10,9 +10,42 @@ from modules.constants import GlobalConstants
 
 
 class DeepClassifier:
-    def __init__(self, corpus):
-        tf.reset_default_graph()
+    def __init__(self, corpus, classifier_name):
+        self.classifierName = classifier_name
         self.corpus = corpus
+        self.embeddings = None
+        self.inputs = None
+        self.logits = None
+        self.posteriors = None
+        self.predictions = None
+        self.numOfCorrectPredictions = None
+        self.accuracy = None
+        self.optimizer = None
+        self.globalStep = None
+        self.correctPredictions = None
+        self.batch_size = None
+        self.input_word_codes = None
+        self.input_x = None
+        self.input_y = None
+        self.keep_prob = None
+        self.sequence_length = None
+        self.max_sequence_length = None
+        self.isTrainingFlag = None
+        # L2 loss
+        self.mainLoss = None
+        self.l2_loss = None
+
+    def build_classifier(self):
+        with tf.variable_scope(self.classifierName):
+            self.get_inputs()
+            self.get_embeddings()
+            self.get_classifier_structure()
+            self.get_softmax_layer()
+            self.get_loss()
+            self.get_accuracy()
+            self.get_optimizer()
+
+    def get_inputs(self):
         self.batch_size = tf.placeholder(dtype=tf.int32, shape=[], name='batch_size')
         self.input_word_codes = tf.placeholder(dtype=tf.int32, shape=[None, None], name='input_word_codes')
         self.input_x = tf.placeholder(dtype=tf.float32,
@@ -23,29 +56,7 @@ class DeepClassifier:
         self.sequence_length = tf.placeholder(dtype=tf.int32, shape=[None], name='sequence_length')
         self.max_sequence_length = tf.placeholder(dtype=tf.int32, name='max_sequence_length')
         self.isTrainingFlag = tf.placeholder(name="is_training", dtype=tf.bool)
-        self.embeddings = None
-        self.inputs = None
-        self.logits = None
-        self.posteriors = None
-        self.predictions = None
-        self.numOfCorrectPredictions = None
-        self.accuracy = None
-        self.optimizer = None
-        self.globalStep = None
-        self.sess = None
-        self.correctPredictions = None
-        # L2 loss
-        self.mainLoss = None
         self.l2_loss = tf.constant(0.0)
-
-    def build_classifier(self):
-        self.get_embeddings()
-        self.get_classifier_structure()
-        self.get_softmax_layer()
-        self.get_loss()
-        self.get_accuracy()
-        self.get_optimizer()
-        self.sess = tf.Session()
 
     def get_embeddings(self):
         # vocabulary_size = self.corpus.get_vocabulary_size()
@@ -101,8 +112,11 @@ class DeepClassifier:
     def test(self, **kwargs):
         pass
 
-    def load_trained_classifier(self, run_id, target_category, iteration):
-        tvars = tf.trainable_variables()
+    def analyze_documents(self, sess, documents, batch_size):
+        pass
+
+    def load_trained_classifier(self, sess, run_id, target_category, iteration):
+        tvars = tf.trainable_variables(scope=self.classifierName)
         file_path = pathlib.Path(__file__).parent.absolute()
         model_folder = os.path.join(file_path, "..", "models", target_category)
         checkpoint_folder = os.path.join(model_folder, "lstm{0}_iteration{1}".format(run_id, iteration))
@@ -112,8 +126,9 @@ class DeepClassifier:
             # assert len([_var for _var in saved_vars if _var.name == var.name]) == 1
             # if "Adam" in var.name:
             #     continue
-            source_array = checkpoint_utils.load_variable(checkpoint_dir=model_path, name=var.name)
-            tf.assign(var, source_array).eval(session=self.sess)
+            var_name = var.name[len(self.classifierName)+1:]
+            source_array = checkpoint_utils.load_variable(checkpoint_dir=model_path, name=var_name)
+            tf.assign(var, source_array).eval(session=sess)
 
     @staticmethod
     def get_explanation():

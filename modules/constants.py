@@ -22,6 +22,9 @@ class GlobalConstants:
     LSTM_HIDDEN_LAYER_SIZE = 256
     USE_ATTENTION_MECHANISM = True
     ITERATION_COUNT = 100000
+    # Web Service
+    SCRAPE_ENTRIES_TO_LOOK = ["alt_items"]
+    CLASSIFIERS = {"adult": (4, 30000), "news": (5, 50000)}
 
     def __init__(self):
         pass

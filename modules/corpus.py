@@ -214,13 +214,16 @@ class Corpus:
         assert index_in_batch == batch_size
         return sequences_arr, seq_lengths, labels_arr
 
-    def get_document_sequences(self, target_category, data_type):
+    def get_document_sequences(self, target_category, data_type, outside_documents=None):
         max_sequence_length = GlobalConstants.MAX_SEQUENCE_LENGTH
         window_size = GlobalConstants.SLIDING_WINDOW_SIZE
-        if data_type == "train":
-            docs = self.documents[self.trainIds]
+        if outside_documents is None:
+            if data_type == "train":
+                docs = self.documents[self.trainIds]
+            else:
+                docs = self.documents[self.testIds]
         else:
-            docs = self.documents[self.testIds]
+            docs = outside_documents
         for doc_id, document in enumerate(docs):
             seq_id = 0
             embeddings = []

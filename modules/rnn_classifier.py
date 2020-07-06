@@ -15,8 +15,8 @@ from modules.deep_classifier import DeepClassifier
 
 
 class RnnClassifier(DeepClassifier):
-    def __init__(self, corpus):
-        super().__init__(corpus)
+    def __init__(self, corpus, classifier_name):
+        super().__init__(corpus, classifier_name)
         self.initial_state = None
         self.initial_state_fw = None
         self.initial_state_bw = None
@@ -140,11 +140,11 @@ class RnnClassifier(DeepClassifier):
 
     def train(self, **kwargs):
         target_category = kwargs["target_category"]
+        sess = kwargs["session"]
         run_id = DbLogger.get_run_id()
         explanation = RnnClassifier.get_explanation()
         DbLogger.write_into_table(rows=[(run_id, explanation)], table=DbLogger.runMetaData, col_count=2)
-        # self.sess = tf.Session()
-        self.sess.run(tf.global_variables_initializer())
+        sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver(max_to_keep=None)
         file_path = pathlib.Path(__file__).parent.absolute()
         model_folder = os.path.join(file_path, "..", "models", target_category)
@@ -160,7 +160,7 @@ class RnnClassifier(DeepClassifier):
                          self.sequence_length: seq_lengths,
                          self.max_sequence_length: GlobalConstants.MAX_SEQUENCE_LENGTH}
             run_ops = [self.optimizer, self.mainLoss]
-            results = self.sess.run(run_ops, feed_dict=feed_dict)
+            results = sess.run(run_ops, feed_dict=feed_dict)
             losses.append(results[1])
             iteration += 1
             if iteration % 10 == 0:
@@ -170,12 +170,13 @@ class RnnClassifier(DeepClassifier):
             if iteration % 100 == 0:
                 checkpoint_folder = os.path.join(model_folder, "lstm{0}_iteration{1}".format(run_id, iteration))
                 path = os.path.join(checkpoint_folder, "lstm{0}_iteration{1}.ckpt".format(run_id, iteration))
-                saver.save(self.sess, path)
+                saver.save(sess, path)
 
     def test(self, **kwargs):
         target_category = kwargs["target_category"]
         batch_size = kwargs["batch_size"]
         data_type = kwargs["data_type"]
+        sess = kwargs["session"]
         file_path = pathlib.Path(__file__).parent.absolute()
         model_folder = os.path.join(file_path, "..", "models")
         all_posteriors = []
@@ -194,7 +195,7 @@ class RnnClassifier(DeepClassifier):
                              self.sequence_length: seq_lengths[batch_id:batch_id + batch_size],
                              self.max_sequence_length: GlobalConstants.MAX_SEQUENCE_LENGTH}
                 run_ops = [self.posteriors]
-                results = self.sess.run(run_ops, feed_dict=feed_dict)
+                results = sess.run(run_ops, feed_dict=feed_dict)
                 doc_ground_truths.append(labels_arr[batch_id:batch_id + batch_size])
                 doc_posteriors.append(results[0])
                 batch_id += batch_size
@@ -217,4 +218,26 @@ class RnnClassifier(DeepClassifier):
                 model_file = open(os.path.join(model_folder, "{0}_posteriors.sav".format(data_type)), "wb")
                 pickle.dump(all_posteriors, model_file)
                 model_file.close()
+
+    def analyze_documents(self, sess, documents, batch_size):
+        all_posteriors = []
+        for sequences_arr, seq_lengths, labels_arr in \
+                self.corpus.get_document_sequences(target_category=None, data_type=None, outside_documents=documents):
+            batch_id = 0
+            doc_posteriors = []
+            while batch_id < sequences_arr.shape[0]:
+                seq_batch = sequences_arr[batch_id:batch_id + batch_size]
+                feed_dict = {self.batch_size: seq_batch.shape[0],
+                             self.input_x: seq_batch,
+                             self.keep_prob: GlobalConstants.DROPOUT_KEEP_PROB,
+                             self.sequence_length: seq_lengths[batch_id:batch_id + batch_size],
+                             self.max_sequence_length: GlobalConstants.MAX_SEQUENCE_LENGTH}
+                run_ops = [self.posteriors]
+                results = sess.run(run_ops, feed_dict=feed_dict)
+                doc_posteriors.append(results[0])
+                batch_id += batch_size
+            if len(doc_posteriors) == 0:
+                continue
+            all_posteriors.append(np.concatenate(doc_posteriors, axis=0))
+        return all_posteriors
 
