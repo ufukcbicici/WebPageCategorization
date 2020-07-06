@@ -13,17 +13,21 @@ from modules.rnn_classifier import RnnClassifier
 class WebPageAnalyzer:
     def __init__(self):
         self.classifiersDict = {}
+        print("Initializing Corpus")
         self.tensorflowSession = tf.Session()
         self.nlp = spacy.load("en_core_web_lg")
         self.tokenizer = self.nlp.Defaults.create_tokenizer(self.nlp)
         self.corpus = Corpus()
+        print("Corpus Initialized")
         # Load Classifiers
+        print("Initializing Classifiers")
         for classifier_name, params in GlobalConstants.CLASSIFIERS.items():
             classifier = RnnClassifier(corpus=self.corpus, classifier_name=classifier_name)
             classifier.build_classifier()
             classifier.load_trained_classifier(run_id=params[0], target_category=classifier_name, iteration=params[1],
                                                sess=self.tensorflowSession)
             self.classifiersDict[classifier_name] = classifier
+        print("Classifiers Initialized")
 
     def get_category_confidence(self, posteriors_list):
         all_posteriors = np.concatenate(posteriors_list, axis=0)
@@ -49,6 +53,7 @@ class WebPageAnalyzer:
         json_response = response.json()
         # Create documents from relevant Json entries
         documents = []
+        categories_accepted = []
         for json_field in GlobalConstants.SCRAPE_ENTRIES_TO_LOOK:
             for text in json_response["scrape_result"][json_field]:
                 # Normalize text
@@ -67,6 +72,9 @@ class WebPageAnalyzer:
                                                                batch_size=1000)
             mean_confidences = self.get_category_confidence(posteriors_list=document_posteriors)
             print("Category:{0} Confidence:{1}".format(category, mean_confidences[1]))
+            if mean_confidences[1] >= 0.5:
+                categories_accepted.append(category)
+        print("Recognized Web Page Categories:{0}".format(categories_accepted))
 
 
 if __name__ == "__main__":

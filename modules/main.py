@@ -5,6 +5,9 @@ import pathlib
 from modules.corpus import Corpus
 from modules.db_logger import DbLogger
 from modules.rnn_classifier import RnnClassifier
+import argparse
+
+from modules.web_page_analyzer import WebPageAnalyzer
 
 
 def train_model(target_category, load_from_hd):
@@ -36,14 +39,10 @@ def run_model(run_id, target_category, iteration):
 
 
 if __name__ == "__main__":
-    # train_model(target_category="adult", load_from_hd=True)
-    # run_model(run_id=4, target_category="adult", iteration=30000)
-    run_model(run_id=5, target_category="news", iteration=50000)
-    # import time
-    #
-    # print('Start.')
-    # for i in range(100):
-    #     time.sleep(0.02)
-    #     print("\rProcessing document:{0}".format(i), end="")
-    #     # print('\rDownloading File FooFile.txt [%d%%]' % i, end="")
-    # print('\nDone.')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--url', required=True)
+    args = parser.parse_args()
+    url = args.url
+    web_page_analyzer = WebPageAnalyzer()
+    web_page_analyzer.analyze_page(page_url=url)
+
