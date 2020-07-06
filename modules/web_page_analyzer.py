@@ -34,6 +34,18 @@ class WebPageAnalyzer:
         mean_confidences = np.mean(all_posteriors, axis=0)
         return mean_confidences
 
+    def get_document_from_text(self, text, _id, page_url):
+        # Normalize text
+        normalized_text = Corpus.normalize_text(text)
+        # spacy_doc = nlp(normalized_text)
+        tokenized_text = self.tokenizer(normalized_text)
+        doc_object = Document(_id=_id, _url=page_url, _text=normalized_text,
+                              _default_categories=None,
+                              _paragraph_type=None,
+                              _gcloud_categories=None,
+                              _tokenized=tokenized_text)
+        return doc_object
+
     def analyze_page(self, page_url):
         try:
             response = requests.get(
@@ -55,17 +67,15 @@ class WebPageAnalyzer:
         documents = []
         categories_accepted = []
         for json_field in GlobalConstants.SCRAPE_ENTRIES_TO_LOOK:
-            for text in json_response["scrape_result"][json_field]:
-                # Normalize text
-                normalized_text = Corpus.normalize_text(text)
-                # spacy_doc = nlp(normalized_text)
-                tokenized_text = self.tokenizer(normalized_text)
-                doc_object = Document(_id=len(documents), _url=page_url, _text=normalized_text,
-                                      _default_categories=None,
-                                      _paragraph_type=None,
-                                      _gcloud_categories=None,
-                                      _tokenized=tokenized_text)
+            if json_field in {"alt_items", "heading_items"}:
+                for text in json_response["scrape_result"][json_field]:
+                    doc_object = self.get_document_from_text(text=text, _id=len(documents), page_url=page_url)
+                    documents.append(doc_object)
+            elif json_field == "bsoup":
+                plain_text = json_response["scrape_result"]["bsoup"]["plain_text"]
+                doc_object = self.get_document_from_text(text=plain_text, _id=len(documents), page_url=page_url)
                 documents.append(doc_object)
+
         # Analyze documents for possible categories
         for category, classifier in self.classifiersDict.items():
             document_posteriors = classifier.analyze_documents(sess=self.tensorflowSession, documents=documents,

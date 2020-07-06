@@ -23,7 +23,7 @@ class GlobalConstants:
     USE_ATTENTION_MECHANISM = True
     ITERATION_COUNT = 100000
     # Web Service
-    SCRAPE_ENTRIES_TO_LOOK = ["alt_items"]
+    SCRAPE_ENTRIES_TO_LOOK = ["alt_items", "bsoup", "heading_items", "link_items", "title_items"]
     CLASSIFIERS = {"adult": (4, 30000), "news": (5, 50000)}
 
     def __init__(self):

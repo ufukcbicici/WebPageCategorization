@@ -38,11 +38,21 @@ def run_model(run_id, target_category, iteration):
     print("X")
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--url', required=True)
-    args = parser.parse_args()
-    url = args.url
-    web_page_analyzer = WebPageAnalyzer()
+web_page_analyzer = WebPageAnalyzer()
+# web_page_analyzer.analyze_page(page_url="https://stackoverflow.com/users/1538049/ufuk-can-bicici")
+
+while True:
+    print("Enter an URL:")
+    url = input()
     web_page_analyzer.analyze_page(page_url=url)
+
+# # if __name__ == "__main__":
+# # print("XXXXX")
+# # parser = argparse.ArgumentParser()
+# # parser.add_argument('--url', required=True)
+# # args = parser.parse_args()
+# url = "https://edition.cnn.com/"
+# # "https://edition.cnn.com/2020/07/06/europe/ennio-morricone-death-intl/index.html"
+# web_page_analyzer = WebPageAnalyzer()
+# web_page_analyzer.analyze_page(page_url=url)
 
