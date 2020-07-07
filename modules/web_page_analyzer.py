@@ -64,25 +64,37 @@ class WebPageAnalyzer:
             print('Success!')
         json_response = response.json()
         # Create documents from relevant Json entries
-        documents = []
+        documents = {}
         categories_accepted = []
         for json_field in GlobalConstants.SCRAPE_ENTRIES_TO_LOOK:
-            if json_field in {"alt_items", "heading_items"}:
+            documents[json_field] = []
+            if json_field in {"alt_items", "heading_items", "link_items", "title_items"}:
                 for text in json_response["scrape_result"][json_field]:
-                    doc_object = self.get_document_from_text(text=text, _id=len(documents), page_url=page_url)
-                    documents.append(doc_object)
+                    doc_object = self.get_document_from_text(text=text, _id=-1, page_url=page_url)
+                    documents[json_field].append(doc_object)
             elif json_field == "bsoup":
                 plain_text = json_response["scrape_result"]["bsoup"]["plain_text"]
-                doc_object = self.get_document_from_text(text=plain_text, _id=len(documents), page_url=page_url)
-                documents.append(doc_object)
+                doc_object = self.get_document_from_text(text=plain_text, _id=-1, page_url=page_url)
+                documents[json_field].append(doc_object)
 
         # Analyze documents for possible categories
         for category, classifier in self.classifiersDict.items():
-            document_posteriors = classifier.analyze_documents(sess=self.tensorflowSession, documents=documents,
-                                                               batch_size=1000)
-            mean_confidences = self.get_category_confidence(posteriors_list=document_posteriors)
-            print("Category:{0} Confidence:{1}".format(category, mean_confidences[1]))
-            if mean_confidences[1] >= 0.5:
+            category_posteriors = []
+            for field_name, field_documents in documents.items():
+                field_posteriors = classifier.analyze_documents(sess=self.tensorflowSession,
+                                                                documents=field_documents,
+                                                                batch_size=1000)
+                assert len(field_posteriors) == len(field_documents)
+                # mean_confidences = self.get_category_confidence(posteriors_list=document_posteriors)
+                field_posterior = np.mean(np.concatenate(field_posteriors, axis=0), axis=0)
+                print("Category:{0} Field:{1} Count:{2} Confidence:{3}".format(category, field_name,
+                                                                               len(field_posteriors),
+                                                                               field_posterior[1]))
+                category_posteriors.append(np.concatenate(field_posteriors, axis=0))
+            category_posteriors = [np.mean(_p, axis=0)[np.newaxis, :] for _p in category_posteriors]
+            category_posterior = np.mean(np.concatenate(category_posteriors, axis=0), axis=0)
+            print("Category:{0} Confidence:{1}".format(category, category_posterior[1]))
+            if category_posterior[1] >= 0.5:
                 categories_accepted.append(category)
         print("Recognized Web Page Categories:{0}".format(categories_accepted))
 
