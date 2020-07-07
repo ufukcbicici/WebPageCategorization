@@ -81,10 +81,12 @@ class WebPageAnalyzer:
         for category, classifier in self.classifiersDict.items():
             category_posteriors = []
             for field_name, field_documents in documents.items():
+                if len(field_documents) == 0:
+                    continue
                 field_posteriors = classifier.analyze_documents(sess=self.tensorflowSession,
                                                                 documents=field_documents,
                                                                 batch_size=1000)
-                assert len(field_posteriors) == len(field_documents)
+                # assert len(field_posteriors) == len(field_documents)
                 # mean_confidences = self.get_category_confidence(posteriors_list=document_posteriors)
                 field_posterior = np.mean(np.concatenate(field_posteriors, axis=0), axis=0)
                 print("Category:{0} Field:{1} Count:{2} Confidence:{3}".format(category, field_name,

@@ -45,6 +45,7 @@ while True:
     print("Enter an URL:")
     url = input()
     web_page_analyzer.analyze_page(page_url=url)
+    print("")
 
 # # if __name__ == "__main__":
 # # print("XXXXX")
